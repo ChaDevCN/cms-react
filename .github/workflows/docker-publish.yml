@@ -121,6 +121,7 @@ jobs:
                 
             acme-companion:
               image: nginxproxy/acme-companion:latest
+              platform: linux/amd64
               container_name: nginx-proxy-acme
               restart: always
               environment:
