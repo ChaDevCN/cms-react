@@ -5,7 +5,7 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY: ghcr.nju.edu.cn
   IMAGE_NAME: ${{ github.repository }}
   DOMAIN: cms.liuchang.plus
 
