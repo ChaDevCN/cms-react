@@ -222,7 +222,7 @@ jobs:
           script: |
             cd /root
             export DOMAIN=${{ env.DOMAIN }}
-            export EMAIL=your-email@example.com
+            export EMAIL=charlie.l1u@outlook.com
             export IMAGE=${{ needs.build.outputs.image_tag }}
             chmod +x deploy.sh
             ./deploy.sh
