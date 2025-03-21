@@ -1,0 +1,243 @@
+name: Build and Deploy
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOMAIN: cms.liuchang.plus
+
+jobs:
+  build:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            
+      - name: Log into registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=,format=short
+            
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+          
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+  
+  deploy:
+    name: Deploy to Server
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Generate server deployment script
+        run: |
+          cat > deploy.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          
+          # 配置参数
+          DOMAIN="${DOMAIN}"
+          EMAIL="${EMAIL}"
+          IMAGE="${IMAGE}"
+          
+          echo "🚀 Starting deployment for $DOMAIN using image $IMAGE"
+          
+          # 创建必要的目录结构
+          mkdir -p /root/proxy
+          mkdir -p /root/apps/$DOMAIN
+          
+          # 确保网络存在
+          docker network create proxy 2>/dev/null || true
+          
+          # 创建并启动反向代理 (如果不存在)
+          if ! docker ps | grep -q nginx-proxy; then
+            echo "📦 Setting up Nginx Proxy and Let's Encrypt companion"
+            cat > /root/proxy/docker-compose.yml <<EOFPROXY
+          version: '3.7'
+          services:
+            nginx-proxy:
+              image: nginxproxy/nginx-proxy:latest
+              container_name: nginx-proxy
+              restart: always
+              ports:
+                - "80:80"
+                - "443:443"
+              volumes:
+                - /root/proxy/conf:/etc/nginx/conf.d
+                - /root/proxy/vhost:/etc/nginx/vhost.d
+                - /root/proxy/html:/usr/share/nginx/html
+                - /root/proxy/certs:/etc/nginx/certs:ro
+                - /var/run/docker.sock:/tmp/docker.sock:ro
+              networks:
+                - proxy
+                
+            acme-companion:
+              image: nginxproxy/acme-companion:latest
+              container_name: nginx-proxy-acme
+              restart: always
+              environment:
+                - DEFAULT_EMAIL=${EMAIL}
+              volumes_from:
+                - nginx-proxy
+              volumes:
+                - /root/proxy/certs:/etc/nginx/certs:rw
+                - /root/proxy/acme:/etc/acme.sh
+                - /var/run/docker.sock:/var/run/docker.sock:ro
+              networks:
+                - proxy
+                
+          networks:
+            proxy:
+              external: true
+          EOFPROXY
+            
+            cd /root/proxy
+            docker-compose up -d
+            echo "✅ Proxy setup complete"
+          else
+            echo "ℹ️ Nginx Proxy already running"
+          fi
+          
+          # 创建应用的 docker-compose 配置
+          echo "📝 Creating application docker-compose config"
+          cat > /root/apps/$DOMAIN/docker-compose.yml <<EOFAPP
+          version: '3.7'
+          services:
+            app:
+              image: ${IMAGE}
+              container_name: ${DOMAIN//./-}
+              restart: always
+              environment:
+                - VIRTUAL_HOST=${DOMAIN}
+                - LETSENCRYPT_HOST=${DOMAIN}
+                - LETSENCRYPT_EMAIL=${EMAIL}
+              networks:
+                - proxy
+              healthcheck:
+                test: ["CMD", "wget", "-qO-", "http://localhost"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+                
+          networks:
+            proxy:
+              external: true
+          EOFAPP
+          
+          # 拉取最新镜像并部署应用
+          echo "🔄 Pulling latest image and deploying application"
+          cd /root/apps/$DOMAIN
+          docker-compose pull
+          docker-compose down || true
+          docker-compose up -d
+          
+          # 等待应用启动
+          echo "⏳ Waiting for application to start"
+          sleep 10
+          
+          # 检查部署状态
+          if docker ps | grep -q ${DOMAIN//./-}; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+            docker logs ${DOMAIN//./-}
+            exit 1
+          fi
+          
+          # 清理旧镜像
+          echo "🧹 Cleaning up old images"
+          docker image prune -f
+          
+          echo "🎉 Deployment complete! Application available at https://${DOMAIN}"
+          EOF
+          
+          chmod +x deploy.sh
+        
+      - name: Copy deployment script to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          source: "deploy.sh"
+          target: "/root"
+          
+      - name: Execute deployment script
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            cd /root
+            export DOMAIN=${{ env.DOMAIN }}
+            export EMAIL=your-email@example.com
+            export IMAGE=${{ needs.build.outputs.image_tag }}
+            chmod +x deploy.sh
+            ./deploy.sh
+            
+      - name: Verify deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            if curl -s -I https://${{ env.DOMAIN }} | grep -q "200 OK"; then
+              echo "✅ Application is responding correctly"
+            else
+              echo "❌ Application is not responding correctly"
+              exit 1
+            fi
