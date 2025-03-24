@@ -4,6 +4,8 @@ import { defineConfig } from '@rsbuild/core';
 import { pluginLess } from '@rsbuild/plugin-less';
 import { pluginReact } from '@rsbuild/plugin-react';
 const rootDirname = path.resolve(__dirname, '../../');
+const { PUBLIC_GOOGLE_CLIENT_ID } = import.meta.env;
+
 export default defineConfig({
 	plugins: [pluginReact(), pluginLess()],
 	resolve: {
@@ -18,6 +20,11 @@ export default defineConfig({
 	server: {
 		publicDir: {
 			name: './static'
+		}
+	},
+	source: {
+		define: {
+			PUBLIC_GOOGLE_CLIENT_ID: `'${PUBLIC_GOOGLE_CLIENT_ID}'`
 		}
 	}
 });
