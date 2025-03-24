@@ -6,7 +6,7 @@ import '@/assets/styles/tailwind.css';
 const rootEL = document.getElementById('root');
 
 const App = () => {
-	return <div>非常简单的测试</div>;
+	return <div>非常简单的测试不对啊啊啊啊 </div>;
 };
 if (rootEL) {
 	const root = ReactDOM.createRoot(rootEL);
