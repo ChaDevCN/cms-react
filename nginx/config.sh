@@ -23,9 +23,9 @@ cat >> /etc/nginx/conf.d/default.conf <<EOF
 			    add_header Cache-Control "private, no-store, no-cache, must-revalidate, proxy-revalidate";
 		    }
 
-        root /app/www/;
-        try_files $uri $uri/ /index.html;
-        client_max_body_size  500m;
+         root /app/www/;
+         try_files $uri $uri/ /index.html;
+         client_max_body_size  500m;
     }
 
  }
