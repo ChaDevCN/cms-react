@@ -67,6 +67,6 @@ jobs:
           HOST: ${{ secrets.SERVER_IP }}
           PORT: 22 
           USER: root
-          PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          PRIVATE_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           COMMAND: cd /root && ./run.sh
 
