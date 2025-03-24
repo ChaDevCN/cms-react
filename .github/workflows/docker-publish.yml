@@ -236,15 +236,9 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           script: |
-           echo "Waiting for SSL certificate to be provisioned..."
-           sleep 120  # 等待2分钟让证书生成
-           for i in {1..5}; do
-            if curl -s -I http://${{ env.DOMAIN }} | grep -q "200"; then
-              echo "✅ Application is responding correctly over HTTP"
-              exit 0
+            if curl -s -I https://${{ env.DOMAIN }} | grep -q "200 OK"; then
+              echo "✅ Application is responding correctly"
+            else
+              echo "❌ Application is not responding correctly"
+              exit 1
             fi
-            echo "Attempt $i: HTTP check failed, waiting 30 seconds..."
-            sleep 30
-           done
-           echo "❌ Application is not responding correctly"
-           exit 1
