@@ -232,7 +232,7 @@ jobs:
         with:
           host: ${{ secrets.SERVER_IP }}
           username: root
-          PRIVATE_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
             if curl -s -I https://${{ env.DOMAIN }} | grep -q "200 OK"; then
