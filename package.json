@@ -8,7 +8,7 @@
 		"check": "biome check --write",
 		"dev": "rsbuild dev --open",
 		"format": "prettier --write .",
-		"lint": "eslint .",
+		"lint": "eslint . --report-unused-disable-directives --max-warnings 0 --cache",
 		"preview": "rsbuild preview"
 	},
 	"dependencies": {
@@ -27,6 +27,7 @@
 		"husky": "8.0.3",
 		"lint-staged": "^15.2.2",
 		"lodash-es": "^4.17.21",
+		"lucide-react": "^0.484.0",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"react-router-dom": "^7.4.0",
@@ -41,6 +42,7 @@
 		"@types/react-dom": "^19.0.4",
 		"@typescript-eslint/eslint-plugin": "^5.40.0",
 		"@typescript-eslint/parser": "^5.40.0",
+		"dayjs": "^1.11.13",
 		"eslint": "^8.57.0",
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin,": "link:@typescript-eslint/eslint-plugin,",

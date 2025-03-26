@@ -20,6 +20,12 @@ export default defineConfig({
 	server: {
 		publicDir: {
 			name: './static'
+		},
+		proxy: {
+			'/api/v1': {
+				target: 'http://localhost:3030',
+				changeOrigin: true
+			}
 		}
 	},
 	source: {

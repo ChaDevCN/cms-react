@@ -35,7 +35,7 @@ if (rootEL) {
 		<ConfigProvider
 			theme={{
 				token: {
-					colorPrimary: '#7c3aed',
+					colorPrimary: '#8508e8',
 					colorPrimaryBg: '#f8f0ff',
 					colorPrimaryBgHover: '#f0e0ff',
 					colorPrimaryBorder: '#d9b8ff',
@@ -43,7 +43,7 @@ if (rootEL) {
 					colorPrimaryHover: '#a064fa',
 					colorPrimaryActive: '#5b26c7',
 					colorPrimaryTextHover: '#a064fa',
-					colorPrimaryText: '#7c3aed',
+					colorPrimaryText: '#8508e8',
 					colorPrimaryTextActive: '#5b26c7'
 				}
 			}}

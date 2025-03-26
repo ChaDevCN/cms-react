@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-import { User } from '@/pages/User/service';
+import { User } from '@/pages/user/service';
 
 interface State {
 	currentUser: User | null;
